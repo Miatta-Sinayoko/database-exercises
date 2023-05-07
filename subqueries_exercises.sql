@@ -92,11 +92,11 @@ WHERE customer.customer_zip= 22821;
 -- JOIN cuatomer_purchase cp  USING cp.customer_id= c.customer_id)
 
 
- -- EXERCISE
+ -- EXERCISE--
  -- execute the following using sub queries
  USE employees;
  SHOW CREATE TABLE employees;
- -- CREATE TABLE `employees` (
+--  CREATE TABLE `employees` (
 --   `emp_no` int NOT NULL,
 --   `birth_date` date NOT NULL,
 --   `first_name` varchar(14) NOT NULL,
@@ -108,7 +108,7 @@ WHERE customer.customer_zip= 22821;
 
 DESCRIBE employees;
 
---  'emp_no','int','NO','PRI',NULL,''
+ -- 'emp_no','int','NO','PRI',NULL,''
 -- 'birth_date','date','NO','',NULL,''
 -- 'first_name','varchar(14)','NO','',NULL,''
 -- 'last_name','varchar(16)','NO','',NULL,''
@@ -117,26 +117,19 @@ DESCRIBE employees;
 
 -- 1.Find all the current employees with the same hire date as employee 101010 using a subquery.
 
-SELECT emp_no,
-  first_name,
-  last_name,
-  hire_date
-FROM employees 
-WHERE emp_no = '101010';
--- Demos Christ 101010, 1990-10-22
-
-
-SELECT
-  emp_no,
-  first_name,
-  last_name,
-  hire_date
+SELECT *
 FROM employees
-WHERE hire_date = (
-  SELECT hire_date
-  FROM employees
-  WHERE emp_no = '101010'
-);
+JOIN dept_emp USING(emp_no)
+WHERE to_date > now()
+AND hire_date =
+    (SELECT hire_date
+    FROM employees
+    WHERE emp_no = 101010);
+    
+SELECT CONCAT(first_name,' ', last_name ),hire_date 
+ FROM employees 
+WHERE emp_no = '101010'; 
+
 
 -- 2. Find all the titles ever held by all current employees with the first name Aamod.
 
@@ -144,56 +137,52 @@ SELECT *
 FROM employees
 WHERE first_name LIKE 'Aamod';
 
-SELECT *
-FROM employees
-  titles AS t
-JOIN employees AS e
-ON t.employee_id = e.employee_id
-WHERE first_name = 'Aamod'
 
- 
-
--- 3.The employee with the highest salary is John Smith.
-
-
--- 4. How many people in the employees table are no longer working for the company? Give the answer in a comment in your code.
-
--- 5.There are 125 employees who are no longer working for the company.
-SELECT
-  COUNT(*) AS num_employees
-FROM employees
-WHERE termination_date IS NOT NULL;
-
-
--- 6. Find all the current department managers that are female. List their names in a comment in your code.
-
--- There are 15 female department managers.
-SELECT
-  department_name,
-  first_name,
-  last_name
-FROM employees
-JOIN departments
-ON employees.emp_no = departments.manager_id
-WHERE gender = 'F'
-AND termination_date IS NULL;
-;
-
-
--- 5. Find all the employees who currently have a higher salary than the companies overall, historical average salary.
-
--- The company's overall, historical average salary is $50,000.
-SELECT
-  emp_no,
-  first_name,
-  last_name,
-  salary
-FROM employees
-WHERE salary > (
-  SELECT AVG(salary)
-  FROM employees
+ SELECT DISTINCT title
+FROM titles
+WHERE emp_no IN (
+   SELECT emp_no
+   FROM employees
+   JOIN dept_emp USING(emp_no)
+   WHERE first_name = 'aamod'
+   AND to_date > now()
 );
 
+-- 3.How many people in the employees table are no longer working for the company? Give the answer in a comment in your code.
+
+SELECT count(*)
+FROM employees
+WHERE emp_no NOT IN 
+    (SELECT emp_no
+    FROM salaries
+    WHERE to_date > now()
+);
+-- 59,900
+
+-- 4. Find all the current department managers that are female. 
+-- List their names in a comment in your code
+
+SELECT *
+FROM employees
+WHERE emp_no in (
+    SELECT emp_no
+       FROM dept_manager
+          WHERE to_date
+ > now()
+)
+AND gender = "F";
+-- Isamu Legleitner,Karsten Sigstam,Leon DasSarma,Hilary Kambil
+
+-- 5. Find all the employees who currently have a higher salary than the 
+-- companies overall, historical average salary.
+
+SELECT emp_no, salary
+FROM salaries s
+JOIN employees e using(emp_no)
+WHERE to_date > now() 
+AND  salary > (SELECT AVG(salary) FROM salaries);
+
+-- 154,543 employees have a salary higher than the company average.
 
 -- 6. How many current salaries are within 1 standard deviation of the current highest salary? (Hint: you can use a built in function to calculate the standard deviation.) What percentage of all salaries is this?
 --     * Hint You will likely use multiple subqueries in a variety of ways
@@ -203,49 +192,51 @@ WHERE salary > (
 -- The standard deviation of all salaries is $15,000.
 -- There are 100 salaries within 1 standard deviation of the current highest salary.
 -- This is 20% of all salaries.
-SELECT
-  COUNT(*) AS num_salaries
-FROM employees
-WHERE salary BETWEEN (
-  (
-    SELECT MAX(salary)
-    FROM employees
-  ) - (
-    SELECT STDDEV(salary)
-    FROM employees
-  )
+
+
+-- Find the maximum current salary and standard deviation
+SELECT 
+    MAX(salary) AS max_salary, 
+    STDDEV(salary) AS std_salary 
+FROM salaries 
+WHERE to_date > NOW();
+
+-- max salary 158,220, standard salary 17,309
+
+-- Get the current salaries that are within 1 standard deviation of the current highest salary
+SELECT 
+    COUNT(*) AS count_within_1std 
+FROM salaries 
+WHERE to_date > NOW() 
+AND salary BETWEEN (
+    SELECT MAX(salary) - STDDEV(salary) 
+    FROM salaries 
+    WHERE to_date > NOW()
 ) AND (
-  (
-    SELECT MAX(salary)
-    FROM employees
-  ) + (
-    SELECT STDDEV(salary)
-    FROM employees
-  )
+    SELECT MAX(salary) 
+    FROM salaries 
+    WHERE to_date > NOW()
 );
 
+-- count withiin 1 standard deviation 83
 
--- BONUS
--- 1. Find all the department names that currently have female managers.
+-- Calculate the percentage of all salaries that are within 1 standard deviation of the current highest salary
+SELECT 
+    COUNT(*) / (SELECT COUNT(*) FROM salaries WHERE to_date > NOW()) * 100 AS percentage_within_1std 
+FROM salaries 
+WHERE to_date > NOW() 
+AND salary BETWEEN (
+    SELECT MAX(salary) - STDDEV(salary) 
+    FROM salaries 
+    WHERE to_date > NOW()
+) AND (
+    SELECT MAX(salary) 
+    FROM salaries 
+    WHERE to_date > NOW()
+);
 
-
--- 2. Find the first and last name of the employee with the highest salary.
-
-
--- 3. Find the department name that the employee with the highest salary works in.
-
-
--- 4. Who is the highest paid employee within each department.
-
---  
- 
- 
--- SELECT *
--- FROM employees
--- WHERE last_name like 'e%e'
--- GROUP BY last_name;
-
-
+-- This approach first gets the maximum current salary and standard deviation using a single query. Then, it uses subqueries to find the number of current salaries that are within 1 standard deviation of the current highest salary and the percentage of all current salaries that represents. The percentage is calculated as the count of salaries within 1 -- standard deviation divided by the total count of 
+-- current salaries, multiplied by 100.
 
 
 
