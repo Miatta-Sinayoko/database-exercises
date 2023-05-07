@@ -69,197 +69,157 @@ DESCRIBE vendor_inventory;
 
  -- EXERCISE
  
- -- 1.Use the employees database
- USE employees;
+ -- 1. Use the join_example_db. Select all the records from both the users and roles tables.
 
--- 2.Using the example in the Associative Table Joins section as a guide, write a query that shows each department 
--- along with the name of the current manager for that department.
-DESCRIBE employees;
-SELECT * 
-FROM employees;
-SHOW CREATE TABLE departments;
+USE join_example_db;
+-- tables: roles and users
 
--- CREATE TABLE `departments` (
---   `dept_no` char(4) NOT NULL,
---   `dept_name` varchar(40) NOT NULL,
---   PRIMARY KEY (`dept_no`),
---   UNIQUE KEY `dept_name` (`dept_name`)
--- ) ENGINE=InnoDB DEFAULT CHARSET=latin1
+SELECT *
+FROM roles;
+-- two columns are  id and name
 
+DESCRIBE roles;
+-- primary key is id
 
-  Department Name    | Department Manager
- --------------------+--------------------
-  Customer Service   | Yuchang Weedman
-  Development        | Leon DasSarma
-  Finance            | Isamu Legleitner
-  Human Resources    | Karsten Sigstam
-  Marketing          | Vishwani Minakawa
-  Production         | Oscar Ghazalie
-  Quality Management | Dung Pesch
-  Research           | Hilary Kambil
-  Sales              | Hauke Zhang
-  
+SELECT *
+FROM users;
+-- columns are  id, name, email, role_id
 
-SELECT dept_name AS 'Department Name'
-CONCAT(e.first_name, ' ', e.last_name) AS dept_manager
-FROM dept_manager AS dm
-JOIN  departments AS d
-  ON d.dept_no = dm.dept_no
-JOIN employees AS e
-  ON e.emp_no = dm.emp_no
-WHERE dm.to_date = '9999-01-01';
-  
-  
--- 3.Find the name of all departments currently managed by women.
+DESCRIBE users;
+-- primary key is id
 
+-- 2. Use join, left join, and right join to combine results from the users and roles tables as we did in the lesson. Before you run each query, guess the expected number of results.
 
+SELECT *
+FROM users
+JOIN roles ON users.role_id = roles.id;
 
-SELECT dept_name AS 'Depatment name'
-CONCAT(e.first_name, ' ', e.last_name) AS dept_manager
-FROM dept_manager AS dm
-JOIN  departments AS d
-  ON d.dept_no = dm.dept_no
-JOIN employees AS e
-  ON e.emp_no = dm.emp_no
-WHERE dm.to_date = '9999-01-01' AND e.gender = 'F';
+SELECT *
+FROM users
+LEFT JOIN roles ON users.role_id = roles.id;
+-- There are null values from the right table in rows 5 and 6
+SELECT *
+FROM users
+RIGHT JOIN roles ON users.role_id = roles.id
+-- There are null values from the left table in row 5
+
+-- 3. Although not explicitly covered in the lesson, aggregate functions like count can be used with join queries. 
+-- Use count and the appropriate join type to get a list of roles along with the number of users that has the role.
+-- Hint: You will also need to use group by in the query.
+
+	
+	SELECT roles.name, 
+	(SELECT COUNT(*) 
+	FROM users 
+	WHERE users.role_id = roles.id) AS user_count
+	FROM roles;
+
+-- 1. Use the employees database.
+
+USE employees;
+
+-- 2. Using the example in the Associative Table Joins section as a guide
+-- Write a query that shows each department along with the name of the current manager for that department.
 
 
+SELECT dept_name AS 'Department Name', CONCAT(e.first_name, ' ', e.last_name) AS 'Department Manager'
+FROM departments AS d
+   JOIN dept_manager as dm ON d.dept_no = dm.dept_no
+    JOIN employees AS e ON dm.emp_no = e.emp_no
+WHERE to_date > NOW()
+ORDER BY dept_name;
+
+-- 3. Find the name of all departments currently managed by women.
+
+SELECT dept_name AS 'Department Name', CONCAT(first_name, ' ', last_name) AS 'Manager Name'
+FROM departments AS d
+    JOIN dept_manager AS dm ON d.dept_no = dm.dept_no
+    JOIN employees AS e ON dm.emp_no = e.emp_no
+WHERE to_date > NOW() AND gender LIKE 'F'
+ORDER BY dept_name;
 
 
--- 3.Find the current titles of employees currently working in the Customer Service department.
+-- 4. Find the current titles of employees currently working in the Customer Service department.
 
 
+SELECT title AS Title, COUNT(*) AS Count
+FROM departments AS d
+    JOIN dept_emp AS de ON d.dept_no = de.dept_no
+    JOIN employees AS e ON de.emp_no = e.emp_no
+    JOIN titles AS t ON e.emp_no = t.emp_no
+WHERE dept_name LIKE 'Customer Service' AND de.to_date > NOW() AND t.to_date > NOW()
+GROUP BY title
+ORDER by title;
 
-SHOW CREATE TABLE dept_emp;
+-- 5. Find the current salary of all current managers.
 
-CREATE TABLE `departments` (
-  `dept_no` char(4) NOT NULL,
-  `dept_name` varchar(40) NOT NULL,
-  PRIMARY KEY (`dept_no`),
-  UNIQUE KEY `dept_name` (`dept_name`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1
+SELECT dept_name AS 'Department Name', CONCAT(first_name, ' ', last_name) AS 'Name', salary AS Salary
+FROM departments
+    JOIN dept_manager ON departments.dept_no = dept_manager.dept_no
+    JOIN employees ON dept_manager.emp_no = employees.emp_no
+    JOIN salaries ON employees.emp_no = salaries.emp_no
+WHERE dept_manager.to_date > NOW() AND salaries.to_date > NOW()
+ORDER BY dept_name;
 
-SELECT title,
-COUNT(*) AS employees
-FROM  dept_emp AS de
-JOIN  titles AS t
-  ON de.dept_no = t.dept_no
-JOIN  AS t
-  ON t.emp_no = m.emp_no
-WHERE dm.from_date = '9999-01-01' AND e.gender =; 
+-- 6. Find the number of current employees in each department.
 
+SELECT dept_emp.dept_no,dept_name, COUNT(*) AS num_employees
+FROM dept_emp
+    JOIN departments ON dept_emp.dept_no = departments.dept_no
+WHERE dept_emp.to_date > NOW()
+GROUP BY dept_emp.dept_no, dept_name
+ORDER BY dept_no;
+-- Marketingv14842, Finance 12437,Human Resources,12898,Production,53304,Development 61386, 
+-- Quality Management 14546,Sales 37701, Research 15441, Customer Service 17569
 
+-- 7. Which department has the highest average salary? Hint: Use current not historic information.
 
+SELECT dept_name, AVG(salary) AS average_salary
+FROM departments
+    JOIN dept_emp ON departments.dept_no = dept_emp.dept_no
+    JOIN employees ON dept_emp.emp_no = employees.emp_no
+    JOIN salaries ON employees.emp_no = salaries.emp_no
+WHERE dept_emp.to_date > NOW() AND salaries.to_date > NOW()
+GROUP BY dept_name
+ORDER BY average_salary DESC
+LIMIT 1;
 
--- 4.Find the current salary of all current managers.
+-- Sales average salary is $88,853
 
+-- 8. Who is the highest paid employee in the Marketing department?
 
-Department Name    | Name              | Salary
--------------------+-------------------+-------
-Customer Service   | Yuchang Weedman   |  58745
-Development        | Leon DasSarma     |  74510
-Finance            | Isamu Legleitner  |  83457
-Human Resources    | Karsten Sigstam   |  65400
-Marketing          | Vishwani Minakawa | 106491
-Production         | Oscar Ghazalie    |  56654
-Quality Management | Dung Pesch        |  72876
-Research           | Hilary Kambil     |  79393
-Sales              | Hauke Zhang       | 101987
+SELECT first_name, last_name
+FROM salaries
+    JOIN employees ON salaries.emp_no = employees.emp_no
+    JOIN dept_emp ON employees.emp_no = dept_emp.emp_no
+    JOIN departments ON dept_emp.dept_no = departments.dept_no
+WHERE dept_name LIKE 'Marketing'
+ORDER BY salary DESC
+LIMIT 1;
 
--- 5.Find the number of current employees in each department.
+-- Akemi Warwick
 
+-- 9. Which current department manager has the highest salary?
 
-+---------+--------------------+---------------+
-| dept_no | dept_name          | num_employees |
-+---------+--------------------+---------------+
-| d001    | Marketing          | 14842         |
-| d002    | Finance            | 12437         |
-| d003    | Human Resources    | 12898         |
-| d004    | Production         | 53304         |
-| d005    | Development        | 61386         |
-| d006    | Quality Management | 14546         |
-| d007    | Sales              | 37701         |
-| d008    | Research           | 15441         |
-| d009    | Customer Service   | 17569         |
-+---------+--------------------+---------------+
+SELECT first_name, last_name, salary, dept_name
+FROM salaries
+    JOIN employees ON salaries.emp_no = employees.emp_no
+    JOIN dept_manager ON employees.emp_no = dept_manager.emp_no
+    JOIN departments ON dept_manager.dept_no = departments.dept_no
+WHERE dept_manager.to_date > NOW() AND salaries.to_date > NOW()
+ORDER BY salary DESC
+LIMIT 1;
 
--- 6.Which department has the highest average salary? Hint: Use current not historic information.
+-- Vishwani Minakawa from Marketing salary is 106,491 
 
+-- 10. Determine the average salary for each department. Use all salary information and round your results.
 
-+-----------+----------------+
-| dept_name | average_salary |
-+-----------+----------------+
-| Sales     | 88852.9695     |
-+-----------+----------------+
-
--- 7.Who is the highest paid employee in the Marketing department?
-
-
-+------------+-----------+
-| first_name | last_name |
-+------------+-----------+
-| Akemi      | Warwick   |
-+------------+-----------+
-
--- 8.Which current department manager has the highest salary?
-
-
-+------------+-----------+--------+-----------+
-| first_name | last_name | salary | dept_name |
-+------------+-----------+--------+-----------+
-| Vishwani   | Minakawa  | 106491 | Marketing |
-+------------+-----------+--------+-----------+
-
--- 9.Determine the average salary for each department. Use all salary information and round your results.
+SELECT d.dept_name, ROUND(AVG(s.salary),0) AS avg_dept_salary
+FROM departments d
+    JOIN dept_emp de USING (dept_no)
+    JOIN salaries s USING (emp_no)
+GROUP BY d.dept_name
+ORDER BY avg_dept_salary DESC;
+-- Sales 80k , Marketing 72k
 
 
-+--------------------+----------------+
-| dept_name          | average_salary | 
-+--------------------+----------------+
-| Sales              | 80668          | 
-+--------------------+----------------+
-| Marketing          | 71913          |
-+--------------------+----------------+
-| Finance            | 70489          |
-+--------------------+----------------+
-| Research           | 59665          |
-+--------------------+----------------+
-| Production         | 59605          |
-+--------------------+----------------+
-| Development        | 59479          |
-+--------------------+----------------+
-| Customer Service   | 58770          |
-+--------------------+----------------+
-| Quality Management | 57251          |
-+--------------------+----------------+
-| Human Resources    | 55575          |
-+--------------------+----------------+
-
--- 10.Bonus Find the names of all current employees, their department name, and their current manager's name.
-
-
-240,124 Rows
-
-Employee Name | Department Name  |  Manager Name
---------------|------------------|-----------------
- Huan Lortz   | Customer Service | Yuchang Weedman
-
- .....
- 
--- SELECT DISTINCT customer_first_name
--- FROM customer
--- GROUP BY customer_first_name;
-
-
-
-
-
-
-
-
-
-
--- SELECT DISTINCT last_name
--- FROM employees
--- WHERE last_name like 'e%e'
--- GROUP BY last_name;
