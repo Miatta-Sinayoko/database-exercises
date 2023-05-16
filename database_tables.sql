@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 -- 3. List all the databases
 SHOW DATABASES; 
 
@@ -93,3 +94,6 @@ CREATE TABLE `dept_manager` (
   CONSTRAINT `dept_manager_ibfk_2` FOREIGN KEY (`dept_no`) REFERENCES `departments` (`dept_no`) ON DELETE CASCADE ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1
 */
+=======
+
+>>>>>>> be7c52622e15910c884c693c3f51906541d12aed
